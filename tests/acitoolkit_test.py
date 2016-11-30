@@ -2916,6 +2916,98 @@ class TestAcitoolkitGraphBuilder(unittest.TestCase):
             os.remove(expected_file)
 
 
+class TestOutsideNetwork(unittest.TestCase):
+    """
+    Test OutsideNetwork class
+    """
+    def test_get_json(self):
+        """
+        Test JSON creation for a OutsideNetwork
+        """
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork('OutsideNetwork', tenant)
+        out_net.set_addr('0.0.0.0/0')
+        out_net_json = out_net.get_json()
+        self.assertTrue('l3extSubnet' in out_net_json)
+
+    def test_get_json_without_ip(self):
+        """
+        Test JSON creation for a OutsideNetwork without an IP
+        This should raise an error
+        """
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork('OutsideNetwork', tenant)
+        with self.assertRaises(ValueError):
+            out_net.get_json()
+
+    def test_get_parent_class(self):
+        """
+        Test _get_parent_class method
+        """
+        self.assertEqual(OutsideNetwork._get_parent_class(), OutsideEPG)
+
+    def test_get_name_dn_delimiters(self):
+        """
+        Test _get_name_dn_delimiters method
+        """
+        self.assertEqual(OutsideNetwork._get_name_dn_delimiters(), 
+                                                        ['/extsubnet-[', '/'])
+
+    def test_set_scope(self):
+        """
+        Test the set_scope method
+        """
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork('OutsideNetwork', tenant)
+        out_net.set_addr('0.0.0.0/0')
+        valid_scopes = ['import-rtctrl', 'export-rtctrl', 'import-security', 
+                        'shared-security', 'shared-rtctrl']
+        for scope in valid_scopes:
+            out_net.set_scope(scope)
+        bad_scope = 'bad-scope'
+        self.assertRaises(ValueError, out_net.set_scope, bad_scope)
+
+    def test_set_scope_to_none(self):
+        """
+        Test the set_scope with None
+        """
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork('OutsideNetwork', tenant)
+        self.assertRaises(TypeError, out_net.set_scope, None)
+
+    def test_get_json_detail(self):
+        """
+        Make sure that the json is correct
+        """
+        ip_add = '0.0.0.0/0'
+        out_net_name = 'OutsideNetwork'
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork(out_net_name, tenant)
+        out_net.set_addr(ip_add)
+        out_net_json = out_net.get_json()
+        self.assertEqual(ip_add, 
+                         out_net_json['l3extSubnet']['attributes']['ip'])
+        self.assertEqual(out_net_name, 
+                         out_net_json['l3extSubnet']['attributes']['name'])
+
+    def test_get_json_detail_set_scope(self):
+        """
+        Make sure that the json is correct when a scope is set
+        """
+        ip_add = '0.0.0.0/0'
+        out_net_name = 'OutsideNetwork'
+        tenant = Tenant('cisco')
+        out_net = OutsideNetwork(out_net_name, tenant)
+        out_net.set_addr(ip_add)
+        valid_scopes = ['import-rtctrl', 'export-rtctrl', 'import-security', 
+                        'shared-security', 'shared-rtctrl']
+        for scope in valid_scopes:
+            out_net.set_scope(scope)
+            out_net_json = out_net.get_json()
+            self.assertEqual(scope, 
+                             out_net_json['l3extSubnet']['attributes']['scope'])
+
+
 class TestContext(unittest.TestCase):
     """
     Test Context class
@@ -5182,6 +5274,7 @@ if __name__ == '__main__':
     live.addTest(unittest.makeSuite(TestLiveOSPF))
     live.addTest(unittest.makeSuite(TestLiveMonitorPolicy))
     live.addTest(unittest.makeSuite(TestLiveOutsideL3))
+    live.addTest(unittest.makeSuite(TestLiveOutsideEPG))
     live.addTest(unittest.makeSuite(TestLiveContractInterface))
 
     offline = unittest.TestSuite()
@@ -5212,6 +5305,7 @@ if __name__ == '__main__':
     offline.addTest(unittest.makeSuite(TestMonitorPolicy))
     offline.addTest(unittest.makeSuite(TestAttributeCriterion))
     offline.addTest(unittest.makeSuite(TestOutsideL2))
+    offline.addTest(unittest.makeSuite(TestOutsideNetwork))
     offline.addTest(unittest.makeSuite(TestTunnelInterface))
     offline.addTest(unittest.makeSuite(TestFexInterface))
     offline.addTest(unittest.makeSuite(TestInputTerminal))
